@@ -1,0 +1,30 @@
+name: Build Win69Updater
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller psutil PyQt5
+
+    - name: Build Updater with PyInstaller
+      run: pyinstaller --onefile win69updater.py
+
+    - name: Upload Updater Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Win69Updater
+        path: dist/win69updater.exe
