@@ -24,7 +24,9 @@ def show_popup(message, app_path):
     """Show a popup message and restart the application if OK is clicked."""
     app = QtWidgets.QApplication(sys.argv)
     msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Update Successful", message)
-    msg_box.setWindowFlags(msg_box.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+    msg_box.setWindowFlags(
+        msg_box.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint
+    )
     msg_box.addButton(QtWidgets.QMessageBox.Ok)
     msg_box.addButton(QtWidgets.QMessageBox.Close)
     reply = msg_box.exec_()
@@ -61,7 +63,8 @@ def main():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=True,
-            startupinfo=startupinfo  # Hides the command window
+            startupinfo=startupinfo,
+            creationflags=subprocess.CREATE_NO_WINDOW  # Ensure no command window shows
         )
         stdout, stderr = installer_process.communicate()
         log_message(f"Installer stdout: {stdout.decode('utf-8')}")
