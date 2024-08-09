@@ -30,10 +30,12 @@ def show_popup(message, app_path):
     msg_box.addButton(QtWidgets.QMessageBox.Ok)
     msg_box.addButton(QtWidgets.QMessageBox.Close)
     reply = msg_box.exec_()
+
     if reply == QtWidgets.QMessageBox.Ok:
         log_message("Restarting application...")
         subprocess.Popen([app_path], shell=True)
-    sys.exit(0)
+    
+    sys.exit(0)  # Ensure the script exits after the user response, regardless of their choice
 
 def run_installer_with_batch(installer_path):
     """Run the installer using a batch file to avoid showing the command window."""
