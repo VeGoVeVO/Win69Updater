@@ -3,7 +3,7 @@ import subprocess
 import os
 import psutil
 import logging
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 # Set up logging
 LOG_FILE = os.path.join(os.path.expanduser("~"), "Desktop", "Win69_update_logs.txt")
@@ -23,8 +23,11 @@ def kill_process(process_name):
 def show_popup(message, app_path):
     """Show a popup message and restart the application if OK is clicked."""
     app = QtWidgets.QApplication(sys.argv)
-    reply = QtWidgets.QMessageBox.information(
-        None, "Update Successful", message, QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Close)
+    msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Update Successful", message)
+    msg_box.setWindowFlags(msg_box.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+    msg_box.addButton(QtWidgets.QMessageBox.Ok)
+    msg_box.addButton(QtWidgets.QMessageBox.Close)
+    reply = msg_box.exec_()
     if reply == QtWidgets.QMessageBox.Ok:
         log_message("Restarting application...")
         subprocess.Popen([app_path])
@@ -49,11 +52,16 @@ def main():
     # Run the installer
     log_message(f"Running installer: {installer_path}")
     try:
+        # Hide the command window
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
         installer_process = subprocess.Popen(
             [installer_path, "/silent", "/norestart"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=True
+            shell=True,
+            startupinfo=startupinfo  # Hides the command window
         )
         stdout, stderr = installer_process.communicate()
         log_message(f"Installer stdout: {stdout.decode('utf-8')}")
