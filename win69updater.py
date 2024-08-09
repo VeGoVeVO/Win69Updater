@@ -1,106 +1,125 @@
 import sys
 import os
 import subprocess
-import psutil
-import logging
+import zipfile
+import time
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import hashlib
 from PyQt5 import QtWidgets, QtCore
 
-# Set up logging
-LOG_FILE = os.path.join(os.path.expanduser("~"), "Desktop", "Win69_update_logs.txt")
-logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, format='%(asctime)s %(message)s')
+# Encryption key (32 bytes key for AES-256)
+ENCRYPTION_KEY = hashlib.sha256(b"super_secret_key").digest()
 
-def log_message(message):
-    """Log a message."""
-    logging.info(message)
+def decrypt(data, key):
+    """Decrypt the given encrypted data using AES-256 decryption."""
+    iv = data[:16]
+    ct = data[16:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    return unpad(cipher.decrypt(ct), AES.block_size).decode("utf-8")
 
-def kill_process(process_name):
-    """Kill a process by name."""
-    for proc in psutil.process_iter():
-        if proc.name() == process_name:
-            proc.kill()
-            log_message(f"Killed process: {process_name}")
+def load_theme():
+    """Load the current theme from the encrypted file."""
+    theme_file = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Win69_data", "theme.enc")
+    if os.path.exists(theme_file):
+        with open(theme_file, "rb") as f:
+            enc_data = f.read()
+        return decrypt(enc_data, ENCRYPTION_KEY)
+    return "light"  # Default to light theme
 
-def show_popup(message, app_path):
-    """Show a popup message and restart the application if OK is clicked."""
-    app = QtWidgets.QApplication(sys.argv)
-    msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Update Successful", message)
-    msg_box.setWindowFlags(
-        msg_box.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint
-    )
-    msg_box.addButton(QtWidgets.QMessageBox.Ok)
-    msg_box.addButton(QtWidgets.QMessageBox.Close)
-    reply = msg_box.exec_()
+class UpdaterWindow(QtWidgets.QWidget):
+    def __init__(self, theme, installer_path, app_path, new_version):
+        super().__init__()
+        self.theme = theme
+        self.installer_path = installer_path
+        self.app_path = app_path
+        self.new_version = new_version
+        self.init_ui()
 
-    if reply == QtWidgets.QMessageBox.Ok:
-        log_message("Restarting application...")
-        subprocess.Popen([app_path], shell=True)
-    
-    sys.exit(0)  # Ensure the script exits after the user response, regardless of their choice
+    def init_ui(self):
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Tool)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
-def run_installer_with_vbs(installer_path):
-    """Run the installer using a VBScript to keep it invisible."""
-    try:
-        batch_file = os.path.join(os.path.dirname(installer_path), "run_installer.bat")
-        vbs_file = os.path.join(os.path.dirname(installer_path), "run_installer.vbs")
+        self.setFixedSize(400, 200)
+        layout = QtWidgets.QVBoxLayout()
 
-        # Create the batch file
-        with open(batch_file, "w") as f:
-            f.write(f'@echo off\n"{installer_path}" /silent /norestart\n')
-            f.write(f'del "{batch_file}"\n')  # Delete the batch file after execution
+        self.label = QtWidgets.QLabel("Updating application...")
+        layout.addWidget(self.label)
 
-        # Create the VBScript file to run the batch file invisibly
-        with open(vbs_file, "w") as f:
-            f.write(f'Set WshShell = CreateObject("WScript.Shell")\n')
-            f.write(f'WshShell.Run chr(34) & "{batch_file}" & Chr(34), 0\n')
-            f.write(f'Set WshShell = Nothing\n')
-            f.write(f'del "{vbs_file}"\n')  # Delete the VBScript file after execution
+        self.progress = QtWidgets.QProgressBar(self)
+        layout.addWidget(self.progress)
 
-        # Run the VBScript file invisibly
-        subprocess.Popen(['wscript.exe', vbs_file], shell=False)
+        self.setLayout(layout)
+        self.apply_theme(self.theme)
 
-    except Exception as e:
-        log_message(f"Error running installer with VBScript: {e}")
-        raise
+    def apply_theme(self, theme):
+        if theme == "dark":
+            self.setStyleSheet("background-color: #333; color: white;")
+        else:
+            self.setStyleSheet("background-color: #faf5f0; color: black;")
+
+    def start_update(self):
+        self.show()
+        self.run_installer()
+        time.sleep(1)
+        self.close()
+
+    def run_installer(self):
+        try:
+            # Extract and run the installer
+            with zipfile.ZipFile(self.installer_path, 'r') as zip_ref:
+                zip_ref.extractall(os.path.dirname(self.installer_path))
+
+            installer_extracted_path = os.path.join(os.path.dirname(self.installer_path), 'installer.exe')
+            
+            process = subprocess.Popen([installer_extracted_path, '/S'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            while process.poll() is None:
+                time.sleep(0.5)
+                self.progress.setValue(self.progress.value() + 5)
+
+            self.progress.setValue(100)
+            time.sleep(1)  # Allow the progress bar to fill
+
+            # Update the version file
+            version_file = os.path.join(os.path.dirname(self.app_path), 'version.txt')
+            with open(version_file, "w") as vf:
+                vf.write(self.new_version)
+
+            self.show_restart_prompt()
+
+        except Exception as e:
+            self.label.setText(f"Update failed: {e}")
+
+    def show_restart_prompt(self):
+        msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Update Complete",
+                                        "Update installed successfully. Click OK to restart the application.")
+        msg_box.setWindowFlags(
+            msg_box.windowFlags() | QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint
+        )
+        msg_box.addButton(QtWidgets.QMessageBox.Ok)
+        msg_box.addButton(QtWidgets.QMessageBox.Close)
+        reply = msg_box.exec_()
+        if reply == QtWidgets.QMessageBox.Ok:
+            subprocess.Popen([self.app_path], shell=True)
 
 def main():
+    app = QtWidgets.QApplication(sys.argv)
+
     if len(sys.argv) != 4:
-        log_message("Usage: win69updater.py <installer_path> <app_path> <new_version>")
+        print("Usage: updater.py <installer_path> <app_path> <new_version>")
         sys.exit(1)
 
     installer_path = sys.argv[1]
     app_path = sys.argv[2]
     new_version = sys.argv[3]
-    version_file = os.path.join(os.path.dirname(app_path), 'version.txt')
 
-    log_message(f"Received args: {sys.argv}")
+    theme = load_theme()
 
-    # Kill the main application
-    log_message("Killing main application if running")
-    kill_process("Win69.exe")
+    updater = UpdaterWindow(theme, installer_path, app_path, new_version)
+    updater.start_update()
 
-    # Run the installer with VBScript
-    log_message(f"Running installer using VBScript: {installer_path}")
-    try:
-        run_installer_with_vbs(installer_path)
-        # Wait for a while to ensure the installer starts properly
-        log_message("Waiting for the installer to complete...")
-        import time
-        time.sleep(10)  # Adjust this if necessary
-
-        # Update the version file only after the installer finishes
-        if os.path.exists(installer_path):
-            log_message("Installer completed successfully.")
-            with open(version_file, "w") as vf:
-                vf.write(new_version)
-            log_message(f"Version updated to {new_version}.")
-            show_popup("Update installed successfully. Click OK to restart the application.", app_path)
-        else:
-            log_message("Installer did not complete successfully.")
-            show_popup("Update failed.", app_path)
-
-    except Exception as e:
-        log_message(f"Error running installer: {e}")
-        show_popup(f"Error running installer: {e}", app_path)
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()

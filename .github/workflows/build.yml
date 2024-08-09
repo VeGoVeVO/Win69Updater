@@ -19,23 +19,18 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.9'
+        python-version: '3.x'
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -r requirements.txt
 
-    - name: Build Updater with PyInstaller
-      run: pyinstaller --onefile --name win69updater win69updater.py
-
-    - name: Rename Executable to Batch File
+    - name: Build executable
       run: |
-        move dist\win69updater.exe dist\run_installer.bat
+        pyinstaller --onefile --noconsole --name win69updater updater_script.py
 
-    - name: Upload Artifact
+    - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: Win69Updater
-        path: dist\run_installer.bat
+        name: win69updater
+        path: dist/win69updater.exe
