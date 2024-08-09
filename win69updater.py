@@ -57,12 +57,12 @@ def main():
         # Hide the command window
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE  # Ensure window is hidden
 
         installer_process = subprocess.Popen(
             [installer_path, "/silent", "/norestart"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=True,
             startupinfo=startupinfo,
             creationflags=subprocess.CREATE_NO_WINDOW  # Ensure no command window shows
         )
