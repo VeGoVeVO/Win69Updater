@@ -1,9 +1,11 @@
 import sys
-import subprocess
 import os
+import subprocess
 import psutil
 import logging
 from PyQt5 import QtWidgets, QtCore
+import ctypes
+import threading
 
 # Set up logging
 LOG_FILE = os.path.join(os.path.expanduser("~"), "Desktop", "Win69_update_logs.txt")
@@ -35,6 +37,14 @@ def show_popup(message, app_path):
         subprocess.Popen([app_path])
     sys.exit(0)
 
+def run_installer_silent(installer_path):
+    """Run the installer silently without showing any command window."""
+    try:
+        ctypes.windll.shell32.ShellExecuteW(None, "open", installer_path, "/silent /norestart", None, 0)
+    except Exception as e:
+        log_message(f"Error running installer silently: {e}")
+        raise
+
 def main():
     if len(sys.argv) != 4:
         log_message("Usage: win69updater.py <installer_path> <app_path> <new_version>")
@@ -51,34 +61,15 @@ def main():
     log_message("Killing main application if running")
     kill_process("Win69.exe")
 
-    # Run the installer
-    log_message(f"Running installer: {installer_path}")
+    # Run the installer silently
+    log_message(f"Running installer silently: {installer_path}")
     try:
-        # Hide the command window
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = subprocess.SW_HIDE  # Ensure window is hidden
-
-        installer_process = subprocess.Popen(
-            [installer_path, "/silent", "/norestart"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            startupinfo=startupinfo,
-            creationflags=subprocess.CREATE_NO_WINDOW  # Ensure no command window shows
-        )
-        stdout, stderr = installer_process.communicate()
-        log_message(f"Installer stdout: {stdout.decode('utf-8')}")
-        log_message(f"Installer stderr: {stderr.decode('utf-8')}")
-
-        if installer_process.returncode == 0:
-            log_message("Installer completed successfully.")
-            with open(version_file, "w") as vf:
-                vf.write(new_version)
-            log_message("Version updated successfully.")
-            show_popup("Update installed successfully. Click OK to restart the application.", app_path)
-        else:
-            log_message(f"Installer exited with code {installer_process.returncode}")
-            show_popup(f"Update failed with exit code {installer_process.returncode}.", app_path)
+        run_installer_silent(installer_path)
+        log_message("Installer completed successfully.")
+        with open(version_file, "w") as vf:
+            vf.write(str(new_version))
+        log_message(f"Version updated successfully to {new_version}.")
+        show_popup("Update installed successfully. Click OK to restart the application.", app_path)
 
     except Exception as e:
         log_message(f"Error running installer: {e}")
