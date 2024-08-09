@@ -37,17 +37,29 @@ def show_popup(message, app_path):
     
     sys.exit(0)  # Ensure the script exits after the user response, regardless of their choice
 
-def run_installer_with_batch(installer_path):
-    """Run the installer using a batch file to avoid showing the command window."""
+def run_installer_with_vbs(installer_path):
+    """Run the installer using a VBScript to keep it invisible."""
     try:
         batch_file = os.path.join(os.path.dirname(installer_path), "run_installer.bat")
+        vbs_file = os.path.join(os.path.dirname(installer_path), "run_installer.vbs")
+
+        # Create the batch file
         with open(batch_file, "w") as f:
             f.write(f'@echo off\n"{installer_path}" /silent /norestart\n')
             f.write(f'del "{batch_file}"\n')  # Delete the batch file after execution
 
-        subprocess.Popen([batch_file], shell=False, creationflags=subprocess.CREATE_NO_WINDOW)
+        # Create the VBScript file to run the batch file invisibly
+        with open(vbs_file, "w") as f:
+            f.write(f'Set WshShell = CreateObject("WScript.Shell")\n')
+            f.write(f'WshShell.Run chr(34) & "{batch_file}" & Chr(34), 0\n')
+            f.write(f'Set WshShell = Nothing\n')
+            f.write(f'del "{vbs_file}"\n')  # Delete the VBScript file after execution
+
+        # Run the VBScript file invisibly
+        subprocess.Popen(['wscript.exe', vbs_file], shell=False)
+
     except Exception as e:
-        log_message(f"Error running installer with batch file: {e}")
+        log_message(f"Error running installer with VBScript: {e}")
         raise
 
 def main():
@@ -66,10 +78,10 @@ def main():
     log_message("Killing main application if running")
     kill_process("Win69.exe")
 
-    # Run the installer with a batch file
-    log_message(f"Running installer using batch file: {installer_path}")
+    # Run the installer with VBScript
+    log_message(f"Running installer using VBScript: {installer_path}")
     try:
-        run_installer_with_batch(installer_path)
+        run_installer_with_vbs(installer_path)
         # Wait for a while to ensure the installer starts properly
         log_message("Waiting for the installer to complete...")
         import time
