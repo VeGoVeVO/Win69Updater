@@ -4,8 +4,6 @@ import subprocess
 import psutil
 import logging
 from PyQt5 import QtWidgets, QtCore
-import ctypes
-import threading
 
 # Set up logging
 LOG_FILE = os.path.join(os.path.expanduser("~"), "Desktop", "Win69_update_logs.txt")
@@ -34,15 +32,20 @@ def show_popup(message, app_path):
     reply = msg_box.exec_()
     if reply == QtWidgets.QMessageBox.Ok:
         log_message("Restarting application...")
-        subprocess.Popen([app_path])
+        subprocess.Popen([app_path], shell=True)
     sys.exit(0)
 
-def run_installer_silent(installer_path):
-    """Run the installer silently without showing any command window."""
+def run_installer_with_batch(installer_path):
+    """Run the installer using a batch file to avoid showing the command window."""
     try:
-        ctypes.windll.shell32.ShellExecuteW(None, "open", installer_path, "/silent /norestart", None, 0)
+        batch_file = os.path.join(os.path.dirname(installer_path), "run_installer.bat")
+        with open(batch_file, "w") as f:
+            f.write(f'@echo off\n"{installer_path}" /silent /norestart\n')
+            f.write(f'del "{batch_file}"\n')  # Delete the batch file after execution
+
+        subprocess.Popen([batch_file], shell=False, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception as e:
-        log_message(f"Error running installer silently: {e}")
+        log_message(f"Error running installer with batch file: {e}")
         raise
 
 def main():
@@ -61,15 +64,25 @@ def main():
     log_message("Killing main application if running")
     kill_process("Win69.exe")
 
-    # Run the installer silently
-    log_message(f"Running installer silently: {installer_path}")
+    # Run the installer with a batch file
+    log_message(f"Running installer using batch file: {installer_path}")
     try:
-        run_installer_silent(installer_path)
-        log_message("Installer completed successfully.")
-        with open(version_file, "w") as vf:
-            vf.write(str(new_version))
-        log_message(f"Version updated successfully to {new_version}.")
-        show_popup("Update installed successfully. Click OK to restart the application.", app_path)
+        run_installer_with_batch(installer_path)
+        # Wait for a while to ensure the installer starts properly
+        log_message("Waiting for the installer to complete...")
+        import time
+        time.sleep(10)  # Adjust this if necessary
+
+        # Update the version file only after the installer finishes
+        if os.path.exists(installer_path):
+            log_message("Installer completed successfully.")
+            with open(version_file, "w") as vf:
+                vf.write(new_version)
+            log_message(f"Version updated to {new_version}.")
+            show_popup("Update installed successfully. Click OK to restart the application.", app_path)
+        else:
+            log_message("Installer did not complete successfully.")
+            show_popup("Update failed.", app_path)
 
     except Exception as e:
         log_message(f"Error running installer: {e}")

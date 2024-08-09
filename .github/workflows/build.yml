@@ -1,6 +1,12 @@
 name: Build Win69Updater
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -8,23 +14,28 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v2
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: '3.9'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller psutil PyQt5
+        pip install pyinstaller
+        pip install -r requirements.txt
 
     - name: Build Updater with PyInstaller
-      run: pyinstaller --onefile win69updater.py
+      run: pyinstaller --onefile --name win69updater win69updater.py
 
-    - name: Upload Updater Artifact
+    - name: Rename Executable to Batch File
+      run: |
+        move dist\win69updater.exe dist\run_installer.bat
+
+    - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
         name: Win69Updater
-        path: dist/win69updater.exe
+        path: dist\run_installer.bat
