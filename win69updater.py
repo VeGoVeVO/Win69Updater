@@ -64,10 +64,13 @@ class InstallerWindow(QtWidgets.QWidget):
 
         process.finished.connect(self.on_installation_finished)
         process.readyReadStandardOutput.connect(self.on_ready_read_output)
+        
     def restart_application(self):
         log_message("Restarting application...")
         subprocess.Popen([self.app_path], shell=True)  # Restart the main application
+        log_message(f"Application path for restart: {self.app_path}")
         QtWidgets.QApplication.quit()  # Quit the updater
+
 
     def on_ready_read_output(self):
         """Read the output of the installer process."""
@@ -103,17 +106,13 @@ class InstallerWindow(QtWidgets.QWidget):
         msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "Update Status", message, self)
         msg_box.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)
         msg_box.addButton(QtWidgets.QMessageBox.Ok)
+        log_message("Showing update popup")
         reply = msg_box.exec_()
 
         if reply == QtWidgets.QMessageBox.Ok:
             log_message("User clicked OK on update completion popup.")
             QtCore.QTimer.singleShot(2000, self.restart_application)  # Restart with delay
 
-
-        if reply == QtWidgets.QMessageBox.Ok:
-            log_message("Restarting application...")
-            subprocess.Popen([self.app_path], shell=True)
-        QtWidgets.QApplication.quit()
 
 def main():
     log_message("Updater script started")
