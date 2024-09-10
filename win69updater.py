@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 import logging
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtCore
 
 # Set up logging
 LOG_FILE = os.path.join(os.path.expanduser("~"), "Desktop", "Win69_update_logs.txt")
@@ -71,7 +71,6 @@ class InstallerWindow(QtWidgets.QWidget):
         log_message(f"Application path for restart: {self.app_path}")
         QtWidgets.QApplication.quit()  # Quit the updater
 
-
     def on_ready_read_output(self):
         """Read the output of the installer process."""
         output = self.sender().readAllStandardOutput().data().decode()
@@ -83,7 +82,6 @@ class InstallerWindow(QtWidgets.QWidget):
 
         if exit_code == 0:
             log_message("Installer completed successfully.")
-            self.update_version()
             # Show the success popup
             self.show_popup("Update installed successfully. Click OK to restart the application.")
             # Delay the restart slightly to ensure everything is written and handled
@@ -91,15 +89,6 @@ class InstallerWindow(QtWidgets.QWidget):
         else:
             log_message("Installer did not complete successfully.")
             self.show_popup("Update failed.")
-
-
-
-    def update_version(self):
-        """Update the version file after successful installation."""
-        version_file = os.path.join(os.path.dirname(self.app_path), 'version.txt')
-        with open(version_file, "w") as vf:
-            vf.write(self.new_version)
-        log_message(f"Version updated to {self.new_version}.")
 
     def show_popup(self, message):
         """Show a popup message and restart the application if OK is clicked."""
@@ -112,7 +101,6 @@ class InstallerWindow(QtWidgets.QWidget):
         if reply == QtWidgets.QMessageBox.Ok:
             log_message("User clicked OK on update completion popup.")
             QtCore.QTimer.singleShot(2000, self.restart_application)  # Restart with delay
-
 
 def main():
     log_message("Updater script started")
