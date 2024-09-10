@@ -31,7 +31,7 @@ jobs:
         pyinstaller --onefile --noconsole --name win69updater win69updater.py
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: win69updater
         path: dist/win69updater.exe
