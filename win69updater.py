@@ -14,13 +14,19 @@ def log_message(message):
     print(message)  # For real-time debugging
 
 def format_version(version_str):
-    """Format the version number as 1.93 for 93, 2.0 for 100, etc."""
+    """Format the version number as 1.0.31 for v1.0.31, 1.93 for v93, etc."""
     version_str = version_str.lstrip('v')
     version_parts = version_str.split('.')
-    version = int(''.join(version_parts))
-    major = version // 100
-    minor = version % 100
-    return f"{major}.{minor}"
+    
+    if len(version_parts) >= 3:
+        # If it's already in the format like 1.0.31, just return it
+        return '.'.join(version_parts[:3])
+    else:
+        # If it's in a format like 93, convert it to 1.93
+        version = int(''.join(version_parts))
+        major = version // 100
+        minor = version % 100
+        return f"{major}.{minor}"
 
 class InstallerWindow(QtWidgets.QWidget):
     def __init__(self, installer_path, app_path, new_version, theme, parent=None):
