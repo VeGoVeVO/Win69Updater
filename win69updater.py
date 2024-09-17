@@ -13,6 +13,15 @@ def log_message(message):
     logging.info(message)
     print(message)  # For real-time debugging
 
+def format_version(version_str):
+    """Format the version number as 1.93 for 93, 2.0 for 100, etc."""
+    version_str = version_str.lstrip('v')
+    version_parts = version_str.split('.')
+    version = int(''.join(version_parts))
+    major = version // 100
+    minor = version % 100
+    return f"{major}.{minor}"
+
 class InstallerWindow(QtWidgets.QWidget):
     def __init__(self, installer_path, app_path, new_version, theme, parent=None):
         super().__init__(parent)
@@ -68,10 +77,11 @@ class InstallerWindow(QtWidgets.QWidget):
     def update_version_file(self):
         user_data_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Win69_data")
         version_file = os.path.join(user_data_path, "version.txt")
+        formatted_version = format_version(self.new_version)
         try:
             with open(version_file, "w") as f:
-                f.write(self.new_version)
-            log_message(f"Updated version file to {self.new_version}")
+                f.write(formatted_version)
+            log_message(f"Updated version file to {formatted_version}")
         except Exception as e:
             log_message(f"Failed to update version file: {e}")
         
