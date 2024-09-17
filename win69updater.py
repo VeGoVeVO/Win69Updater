@@ -65,6 +65,16 @@ class InstallerWindow(QtWidgets.QWidget):
         process.finished.connect(self.on_installation_finished)
         process.readyReadStandardOutput.connect(self.on_ready_read_output)
         
+    def update_version_file(self):
+        user_data_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Win69_data")
+        version_file = os.path.join(user_data_path, "version.txt")
+        try:
+            with open(version_file, "w") as f:
+                f.write(self.new_version)
+            log_message(f"Updated version file to {self.new_version}")
+        except Exception as e:
+            log_message(f"Failed to update version file: {e}")
+        
     def restart_application(self):
         log_message("Restarting application...")
         subprocess.Popen([self.app_path], shell=True)  # Restart the main application
@@ -77,15 +87,13 @@ class InstallerWindow(QtWidgets.QWidget):
         log_message(f"Installer output: {output}")
 
     def on_installation_finished(self, exit_code, exit_status):
-        """Handle the installer process completion."""
         log_message(f"Installer finished with exit code {exit_code}")
 
         if exit_code == 0:
             log_message("Installer completed successfully.")
-            # Show the success popup
+            self.update_version_file()  # Update the version file
             self.show_popup("Update installed successfully. Click OK to restart the application.")
-            # Delay the restart slightly to ensure everything is written and handled
-            QtCore.QTimer.singleShot(2000, self.restart_application)  # Add a delay before restarting
+            QtCore.QTimer.singleShot(2000, self.restart_application)
         else:
             log_message("Installer did not complete successfully.")
             self.show_popup("Update failed.")
