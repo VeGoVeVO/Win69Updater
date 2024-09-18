@@ -83,7 +83,10 @@ class InstallerWindow(QtWidgets.QWidget):
     def update_version_file(self):
         user_data_path = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Win69_data")
         version_file = os.path.join(user_data_path, "version.txt")
-        formatted_version = format_version(self.new_version)
+        version_parts = self.new_version.lstrip('v').split('.')
+        if len(version_parts) < 3:
+            version_parts.extend(['0'] * (3 - len(version_parts)))
+        formatted_version = '.'.join(version_parts[:3])
         try:
             with open(version_file, "w") as f:
                 f.write(formatted_version)
