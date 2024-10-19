@@ -14,10 +14,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3 # Updated to v3
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4 # Updated to v4
       with:
         python-version: '3.x'
 
@@ -31,7 +31,7 @@ jobs:
         pyinstaller --onefile --noconsole --name win69updater win69updater.py
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4 # Updated to v4
       with:
         name: win69updater
         path: dist/win69updater.exe
